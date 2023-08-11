@@ -1,6 +1,6 @@
 #include <benchmark/benchmark.h>
 
-#include <executors.h>
+#include "executors.h"
 
 class EmptyTask : public Task {
 public:
@@ -42,76 +42,76 @@ static void BenchmarkFanoutFanin(benchmark::State& state) {
     }
 }
 
-// BENCHMARK(BenchmarkFanoutFanin)
-//     ->Args({1, 1})
-//     ->Args({1, 10})
-//     ->Args({1, 100})
-//     ->Args({2, 1})
-//     ->Args({2, 10})
-//     ->Args({2, 100})
-//     ->Args({10, 1})
-//     ->Args({10, 10})
-//     ->Args({10, 100});
+BENCHMARK(BenchmarkFanoutFanin)
+    ->Args({1, 1})
+    ->Args({1, 10})
+    ->Args({1, 100})
+    ->Args({2, 1})
+    ->Args({2, 10})
+    ->Args({2, 100})
+    ->Args({10, 1})
+    ->Args({10, 10})
+    ->Args({10, 100});
 
-// class Latch {
-// public:
-//     Latch(size_t count) : counter_(count) {
-//     }
+class Latch {
+public:
+    Latch(size_t count) : counter_(count) {
+    }
 
-//     void Wait() {
-//         std::unique_lock<std::mutex> guard(lock_);
-//         done_.wait(guard, [this] { return counter_ == 0; });
-//     }
+    void Wait() {
+        std::unique_lock<std::mutex> guard(lock_);
+        done_.wait(guard, [this] { return counter_ == 0; });
+    }
 
-//     void Signal() {
-//         std::unique_lock<std::mutex> guard(lock_);
-//         counter_--;
-//         if (counter_ == 0) {
-//             done_.notify_all();
-//         }
-//     }
+    void Signal() {
+        std::unique_lock<std::mutex> guard(lock_);
+        counter_--;
+        if (counter_ == 0) {
+            done_.notify_all();
+        }
+    }
 
-// private:
-//     std::mutex lock_;
-//     std::condition_variable done_;
-//     size_t counter_;
-// };
+private:
+    std::mutex lock_;
+    std::condition_variable done_;
+    size_t counter_;
+};
 
-// class LatchSignaler : public Task {
-// public:
-//     LatchSignaler(Latch* latch) : latch_(latch) {
-//     }
+class LatchSignaler : public Task {
+public:
+    LatchSignaler(Latch* latch) : latch_(latch) {
+    }
 
-//     virtual void Run() override {
-//         latch_->Signal();
-//     }
+    virtual void Run() override {
+        latch_->Signal();
+    }
 
-// private:
-//     Latch* latch_;
-// };
+private:
+    Latch* latch_;
+};
 
-// static void BenchmarkScalableTimers(benchmark::State& state) {
-//     auto executor = MakeThreadPoolExecutor(state.range(0));
+static void BenchmarkScalableTimers(benchmark::State& state) {
+    auto executor = MakeThreadPoolExecutor(state.range(0));
 
-//     for (auto _ : state) {
-//         Latch latch(state.range(1));
-//         auto at = std::chrono::system_clock::now() + std::chrono::milliseconds(5);
+    for (auto _ : state) {
+        Latch latch(state.range(1));
+        auto at = std::chrono::system_clock::now() + std::chrono::milliseconds(5);
 
-//         for (size_t i = 0; i < static_cast<size_t>(state.range(1)); i++) {
-//             auto task = std::make_shared<LatchSignaler>(&latch);
+        for (size_t i = 0; i < static_cast<size_t>(state.range(1)); i++) {
+            auto task = std::make_shared<LatchSignaler>(&latch);
 
-//             task->SetTimeTrigger(at + std::chrono::microseconds((i * i) % 1000));
-//             executor->Submit(task);
-//         }
+            task->SetTimeTrigger(at + std::chrono::microseconds((i * i) % 1000));
+            executor->Submit(task);
+        }
 
-//         latch.Wait();
-//     }
-// }
+        latch.Wait();
+    }
+}
 
-// BENCHMARK(BenchmarkScalableTimers)
-//     ->Args({1, 100000})
-//     ->Args({2, 100000})
-//     ->Args({5, 100000})
-//     ->Unit(benchmark::kMillisecond);
+BENCHMARK(BenchmarkScalableTimers)
+    ->Args({1, 100000})
+    ->Args({2, 100000})
+    ->Args({5, 100000})
+    ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_MAIN();
