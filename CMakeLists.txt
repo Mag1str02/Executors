@@ -7,6 +7,10 @@ project(Executors)
 include(gmock.cmake)
 include(benchmark.cmake)
 
+add_library(executors 
+  executors.cpp
+)
+
 add_executable(test_executors
   test_executors.cpp
   test_future.cpp

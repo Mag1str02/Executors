@@ -170,7 +170,7 @@ private:
 class Executor
 {
 public:
-    Executor(size_t num_threads);
+    Executor(size_t num_threads = std::thread::hardware_concurrency());
     ~Executor();
 
     void Submit(std::shared_ptr<Task> task);
